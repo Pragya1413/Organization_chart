@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Hierarchy</title>
+  
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .form-container {
+      margin-bottom: 30px;
+    }
+    
+    .form-container h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #444;
+    }
+    
+    .form-container form {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 15px;
+    }
+    
+    .form-container label {
+      font-weight: bold;
+      color: #555;
+    }
+    
+    .form-container input, .form-container select {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    
+    .form-container button {
+      padding: 12px 24px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .form-container button:hover {
+      background-color: #0056b3;
+    }
+    
+    .employee-container {
+      margin-top: 30px;
+    }
+    
+    .button-container {
+      display: flex;
+      gap: 15px;
+      justify-content: flex-end;
+    }
+    
+    .button-container button {
+      padding: 12px 24px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    
+    .button-container #viewHierarchy {
+      background-color: #006eff;
+      color: white;
+    }
+    
+    .button-container #viewHierarchy:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+    
+    .button-container #table {
+      background-color: #28a745;
+      color: white;
+    }
+    
+    .button-container #table:hover {
+      background-color: #218838;
+      transform: scale(1.05);
+    }
+    
+    #tree {
+      margin-top: 30px;
+    }
+    
+    .node {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background-color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .children {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-container">
+      <h2>Add Employee</h2>
+      <form id="employeeForm">
+        <label for="id">Employee ID</label>
+        <input type="text" id="id" name="id" required autocomplete="off">
+        
+        <label for="name">Employee Name</label>
+        <input type="text" id="name" name="name" required autocomplete="off">
+        
+        <label for="pid">Parent ID</label>
+        <input type="text" id="pid" name="pid" autocomplete="off">
+        
+        <button type="submit">Add Employee</button>
+      </form>
+    </div>
+    
+    <div class="employee-container">
+      <div class="button-container">
+        <button id="viewHierarchy">View Hierarchy</button>
+        <button id="table">View Table</button>
+        
+      </div>
+    </div>
+    
+    <div id="tree"></div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const employeeForm = document.getElementById('employeeForm');
+      const employeeId = document.getElementById('id');
+      const employeeNameInput = document.getElementById('name');
+      const parentEmployeeSelect = document.getElementById('pid');
+      const viewHierarchyButton = document.getElementById('viewHierarchy');
+      const anotherButton = document.getElementById('anotherButton');
+      const treeContainer = document.getElementById('tree');
+      
+      const fetchEmployees = async () => {
+        try {
+          const response = await fetch('http://localhost:3000/employee');
+          const employees = await response.json();
+          parentEmployeeSelect.innerHTML = '';
+          employees.forEach(employee => {
+            const option = document.createElement('option');
+            option.value = employee.id;
+            option.textContent = employee.name;
+            parentEmployeeSelect.appendChild(option);
+          });
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+        }
+      };
+      
+      const renderEmployees = async () => {
+        try {
+          const response = await fetch('http://localhost:3000/employee');
+          const employees = await response.json();
+          const employeeMap = {};
+          
+          employees.forEach(employee => {
+            employeeMap[employee.id] = { ...employee, children: [] };
+          });
+          
+          const tree = [];
+          
+          employees.forEach(employee => {
+            if (employee.pid === null) {
+              tree.push(employeeMap[employee.id]);
+            } else if (employeeMap[employee.pid]) {
+              employeeMap[employee.pid].children.push(employeeMap[employee.id]);
+            }
+          });
+          
+          treeContainer.innerHTML = '';
+          renderTree(tree, treeContainer);
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+        }
+      };
+      
+      const renderTree = (tree, parentElement) => {
+        tree.forEach(employee => {
+          const div = document.createElement('div');
+          div.classList.add('node');
+          div.textContent = employee.name;
+          parentElement.appendChild(div);
+          
+          if (employee.children && employee.children.length > 0) {
+            const childContainer = document.createElement('div');
+            childContainer.classList.add('children');
+            renderTree(employee.children, childContainer);
+            div.appendChild(childContainer);
+          }
+        });
+      };
+      
+      employeeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const id = employeeId.value;
+        const name = employeeNameInput.value.trim();
+        const pid = parentEmployeeSelect.value || null;
+        try {
+          const response = await fetch('http://localhost:3000/employee', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, name, pid }),
+          });
+          if (!response.ok) throw new Error('Failed to add employee');
+          employeeId.value = '';
+          employeeNameInput.value = '';
+          parentEmployeeSelect.value = '';
+          fetchEmployees();
+          renderEmployees();
+        } catch (error) {
+          console.error('Error adding employee:', error);
+        }
+      });
+      
+      viewHierarchyButton.addEventListener('click', () => {
+        window.location.href = 'result.html';
+      });
+      
+      table.addEventListener('click', () => {
+        window.location.href = 'result_new.html';
+      });
+      
+      fetchEmployees();
+      renderEmployees();
+    });
+  </script>
+</body>
+</html>

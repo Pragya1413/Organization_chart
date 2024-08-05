@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee List</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .actions button {
+      padding: 5px 10px;
+      margin-right: 5px;
+    }
+    .actions .edit {
+      background-color: #007bff;
+      color: white;
+    }
+    .actions .delete {
+      background-color: #dc3545;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Employee List</h2>
+    <table id="employeeTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>PID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const employeeTable = document.getElementById('employeeTable').getElementsByTagName('tbody')[0];
+
+      const fetchEmployees = async () => {
+        try {
+          const response = await fetch('http://localhost:3000/api/employee');
+          const employees = await response.json();
+          employeeTable.innerHTML = '';
+          employees.forEach(employee => {
+            const row = employeeTable.insertRow();
+            row.insertCell(0).textContent = employee.id;
+            row.insertCell(1).textContent = employee.name;
+            row.insertCell(2).textContent = employee.pid;
+
+            const actionsCell = row.insertCell(3);
+            actionsCell.classList.add('actions');
+
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.classList.add('edit');
+            editButton.onclick = () => editEmployee(employee.id, employee.name, employee.pid);
+            actionsCell.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.classList.add('delete');
+            deleteButton.onclick = () => deleteEmployee(employee.id);
+            actionsCell.appendChild(deleteButton);
+          });
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+        }
+      };
+
+      const editEmployee = (id, name, pid) => {
+        const newName = prompt('Enter new name:', name);
+        const newPid = prompt('Enter new PID:', pid);
+        if (newName && newPid) {
+          fetch(`http://localhost:3000/api/employee/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName, pid: newPid }),
+          })
+          .then(response => response.json())
+          .then(() => fetchEmployees())
+          .catch(error => console.error('Error updating employee:', error));
+        }
+      };
+
+      const deleteEmployee = id => {
+        if (confirm('Are you sure you want to delete this employee?')) {
+          fetch(`http://localhost:3000/api/employee/${id}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(() => fetchEmployees())
+            .catch(error => console.error('Error deleting employee:', error));
+        }
+      };
+
+      fetchEmployees();
+    });
+  </script>
+</body>
+</html>

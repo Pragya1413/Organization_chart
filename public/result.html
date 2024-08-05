@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Tree</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    .node circle {
+      fill: #c14b4b;
+      stroke: #555;
+      stroke-width: 2px;
+    }
+    .node text {
+      font: 12px sans-serif;
+      font-weight: bold;
+      fill: #333;
+      background-color: #213951;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+    .link {
+      fill: none;
+      stroke: #555;
+      stroke-width: 2px;
+    }
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      width: 80px;
+      height: 28px;
+      padding: 2px;
+      font: 12px sans-serif;
+      background: rgb(6, 23, 45);
+      border: 0px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Employee Tree</h1>
+  <svg width="960" height="600"></svg>
+  <script>
+    async function fetchData() {
+      const response = await fetch('/api/employee');
+      const data = await response.json();
+      return data;
+    }
+
+    function buildTree(data) {
+      const tree = {};
+      data.forEach(item => {
+        tree[item.id] = { ...item, children: [] };
+      });
+      const root = [];
+      data.forEach(item => {
+        if (item.pid === 0) {
+          root.push(tree[item.id]);
+        } else if (tree[item.pid]) {
+          tree[item.pid].children.push(tree[item.id]);
+        }
+      });
+      return root.length ? root[0] : null;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const data = await fetchData();
+      const root = buildTree(data);
+      const width = 500;
+      const height = 1000;
+
+      const svg = d3.select("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", "translate(40,0)");
+
+      const treeLayout = d3.tree().size([height, width - 160]);
+      const rootD3 = d3.hierarchy(root);
+
+      treeLayout(rootD3);
+
+      svg.selectAll('.link')
+        .data(rootD3.links())
+        .enter().append('path')
+        .attr('class', 'link')
+        .attr('d', d3.linkHorizontal()
+          .x(d => d.y)
+          .y(d => d.x));
+
+      const node = svg.selectAll('.node')
+        .data(rootD3.descendants())
+        .enter().append('g')
+        .attr('class', 'node')
+        .attr('transform', d => `translate(${d.y},${d.x})`);
+
+      node.append('circle')
+        .attr('r', 5);
+
+      node.append('text')
+        .attr('dy', 3)
+        .attr('x', d => d.children ? -10 : 10)
+        .style('text-anchor', d => d.children ? 'end' : 'start')
+        .text(d => d.data.name)
+        .style('fill', 'red')
+        .style('font-size', '10px')
+        .style('font-weight', 'bold')
+        .style('background', '#1f77b4')
+        .style('padding', '5px')
+        
+        .style('border-radius', '3px');
+    });
+  </script>
+</body>
+</html>
